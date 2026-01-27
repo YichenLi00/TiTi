@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useApp } from '../hooks/useApp';
+import { useProject } from '../hooks/useProject';
 import { PROJECT_COLORS } from '../constants';
 
 interface AddProjectModalProps {
@@ -8,7 +8,7 @@ interface AddProjectModalProps {
 }
 
 export function AddProjectModal({ parentProjectId, onClose }: AddProjectModalProps) {
-  const { addProject } = useApp();
+  const { addProject } = useProject();
   const [name, setName] = useState('');
   const [selectedColor, setSelectedColor] = useState(PROJECT_COLORS[0]);
 

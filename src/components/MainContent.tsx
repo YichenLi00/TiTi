@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { isToday, isTomorrow, isThisWeek, isThisMonth, parseISO, startOfDay, compareAsc } from 'date-fns';
-import { useApp } from '../hooks/useApp';
+import { useTodo } from '../hooks/useTodo';
+import { useProject } from '../hooks/useProject';
+import { useView } from '../hooks/useView';
 import { TodoItem } from './TodoItem';
 import { AddTodoForm } from './AddTodoForm';
 import { Calendar } from './Calendar';
@@ -26,17 +28,9 @@ const VIEW_MODE_CONFIG: Record<ViewMode, {
 };
 
 export function MainContent() {
-  const {
-    todos,
-    projects,
-    viewMode,
-    selectedProjectId,
-    searchQuery,
-    searchTodos,
-    getOverdueTodos,
-    getNoDateTodos,
-    getHighPriorityTodos,
-  } = useApp();
+  const { todos, overdueTodos, noDateTodos, highPriorityTodos } = useTodo();
+  const { projects } = useProject();
+  const { viewMode, selectedProjectId, searchQuery, searchTodos } = useView();
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>('all');
   const [showCompleted, setShowCompleted] = useState(false);
 
@@ -53,16 +47,16 @@ export function MainContent() {
     // Handle smart lists and search
     switch (viewMode) {
       case 'search':
-        result = searchTodos(searchQuery);
+        result = searchTodos(todos, projects, searchQuery);
         break;
       case 'overdue':
-        result = getOverdueTodos();
+        result = overdueTodos;
         break;
       case 'no-date':
-        result = getNoDateTodos();
+        result = noDateTodos;
         break;
       case 'high-priority':
-        result = getHighPriorityTodos();
+        result = highPriorityTodos;
         break;
       case 'today':
         result = todos.filter((todo) => {
@@ -135,7 +129,7 @@ export function MainContent() {
     });
 
     return result;
-  }, [todos, viewMode, selectedProjectId, timelineFilter, showCompleted, searchQuery, searchTodos, getOverdueTodos, getNoDateTodos, getHighPriorityTodos]);
+  }, [todos, viewMode, selectedProjectId, timelineFilter, showCompleted, searchQuery, searchTodos, overdueTodos, noDateTodos, highPriorityTodos]);
 
   const groupedByDate = useMemo(() => {
     if (viewMode !== 'upcoming') return null;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { useApp } from '../hooks/useApp';
+import { useTodo } from '../hooks/useTodo';
+import { useProject } from '../hooks/useProject';
 import { PRIORITY_COLORS } from '../constants';
 import type { ViewMode, RecurrenceType } from '../types';
 import './AddTodoForm.css';
@@ -11,7 +12,8 @@ interface AddTodoFormProps {
 }
 
 export function AddTodoForm({ defaultProjectId, viewMode }: AddTodoFormProps) {
-  const { addTodo, projects } = useApp();
+  const { addTodo } = useTodo();
+  const { projects } = useProject();
   const [isExpanded, setIsExpanded] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');

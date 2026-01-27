@@ -13,12 +13,12 @@ import {
   isToday,
   parseISO,
 } from 'date-fns';
-import { useApp } from '../hooks/useApp';
+import { useTodo } from '../hooks/useTodo';
 import { TodoItem } from './TodoItem';
 import './Calendar.css';
 
 export function Calendar() {
-  const { todos, addTodo } = useApp();
+  const { todos, addTodo } = useTodo();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [isAddingTask, setIsAddingTask] = useState(false);

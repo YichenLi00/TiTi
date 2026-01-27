@@ -1,16 +1,19 @@
 import { useRef } from 'react';
-import { useApp } from '../hooks/useApp';
+import { useTodo } from '../hooks/useTodo';
+import { useProject } from '../hooks/useProject';
+import { exportData, importData } from '../utils/data';
 
 interface SettingsModalProps {
   onClose: () => void;
 }
 
 export function SettingsModal({ onClose }: SettingsModalProps) {
-  const { exportData, importData } = useApp();
+  const { todos, replaceTodos } = useTodo();
+  const { projects, replaceProjects } = useProject();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
-    const data = exportData();
+    const data = exportData(todos, projects);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -27,8 +30,10 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target?.result as string;
-        const success = importData(content);
-        if (success) {
+        const result = importData(content);
+        if (result) {
+          if (result.todos) replaceTodos(result.todos);
+          if (result.projects) replaceProjects(result.projects);
           alert('Data imported successfully!');
         } else {
           alert('Failed to import data. Please check the file format.');

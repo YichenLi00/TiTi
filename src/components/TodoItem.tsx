@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import type { Todo } from '../types';
-import { useApp } from '../hooks/useApp';
+import { useTodo } from '../hooks/useTodo';
+import { useProject } from '../hooks/useProject';
 import { PRIORITY_COLORS } from '../constants';
 import './TodoItem.css';
 
@@ -11,7 +12,8 @@ interface TodoItemProps {
 }
 
 export function TodoItem({ todo, level = 0 }: TodoItemProps) {
-  const { toggleTodo, deleteTodo, updateTodo, addTodo, extendTodo, projects, getSubtasks } = useApp();
+  const { toggleTodo, deleteTodo, updateTodo, addTodo, extendTodo, getSubtasks } = useTodo();
+  const { projects } = useProject();
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);

@@ -1,34 +1,25 @@
 import { useState } from 'react';
-import { useApp } from '../hooks/useApp';
+import { useProject } from '../hooks/useProject';
+import { useView } from '../hooks/useView';
+import { useTodo } from '../hooks/useTodo';
 import { SettingsModal } from './SettingsModal';
 import { AddProjectModal } from './AddProjectModal';
 import type { Project } from '../types';
 import './Sidebar.css';
 
 export function Sidebar() {
-  const {
-    projects,
-    viewMode,
-    setViewMode,
-    selectedProjectId,
-    setSelectedProjectId,
-    getSubprojects,
-    deleteProject,
-    searchQuery,
-    setSearchQuery,
-    getOverdueTodos,
-    getNoDateTodos,
-    getHighPriorityTodos,
-  } = useApp();
+  const { projects, getSubprojects, deleteProject } = useProject();
+  const { viewMode, setViewMode, selectedProjectId, setSelectedProjectId, searchQuery, setSearchQuery } = useView();
+  const { overdueTodos, noDateTodos, highPriorityTodos } = useTodo();
 
   const [addProjectParentId, setAddProjectParentId] = useState<string | undefined>(undefined);
   const [showAddProject, setShowAddProject] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   const rootProjects = projects.filter((p) => !p.parentId);
-  const overdueCount = getOverdueTodos().length;
-  const noDateCount = getNoDateTodos().length;
-  const highPriorityCount = getHighPriorityTodos().length;
+  const overdueCount = overdueTodos.length;
+  const noDateCount = noDateTodos.length;
+  const highPriorityCount = highPriorityTodos.length;
 
   const handleProjectClick = (project: Project) => {
     setSelectedProjectId(project.id);
