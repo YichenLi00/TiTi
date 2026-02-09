@@ -1,15 +1,25 @@
 import { useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { addDays, addWeeks, addMonths, parseISO, format, isBefore, isAfter, subMilliseconds } from 'date-fns';
-import { createContext } from 'react';
+import { createContext, useContext } from 'react';
 import type { Todo } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { isTopLevelIncomplete } from '../utils/filters';
 import { APP_NAME, APP_ICON, REMINDER_CHECK_INTERVAL, REMINDER_WINDOW_MS } from '../constants';
-import { useProject } from '../hooks/useProject';
+import { useProjectActions } from './ProjectContext';
 
-interface TodoContextType {
+// State Context - 只包含数据，不包含回调
+interface TodoStateContextType {
   todos: Todo[];
+  overdueTodos: Todo[];
+  noDateTodos: Todo[];
+  highPriorityTodos: Todo[];
+}
+
+const TodoStateContext = createContext<TodoStateContextType | undefined>(undefined);
+
+// Actions Context - 只包含回调，不包含数据
+interface TodoActionsContextType {
   addTodo: (todo: Omit<Todo, 'id' | 'createdAt'>) => void;
   updateTodo: (id: string, updates: Partial<Todo>) => void;
   deleteTodo: (id: string) => void;
@@ -19,17 +29,13 @@ interface TodoContextType {
   getProjectTodos: (projectId: string) => Todo[];
   deleteProjectTodos: (projectId: string) => void;
   replaceTodos: (todos: Todo[]) => void;
-  // Smart lists - 已用 useMemo 优化
-  overdueTodos: Todo[];
-  noDateTodos: Todo[];
-  highPriorityTodos: Todo[];
 }
 
-export const TodoContext = createContext<TodoContextType | undefined>(undefined);
+const TodoActionsContext = createContext<TodoActionsContextType | undefined>(undefined);
 
 export function TodoProvider({ children }: { children: ReactNode }) {
   const [todos, setTodos] = useLocalStorage<Todo[]>('titi-todos', []);
-  const { onProjectDelete } = useProject();
+  const { onProjectDelete } = useProjectActions();
 
   // 用于提醒检查的 ref
   const todosRef = useRef(todos);
@@ -49,20 +55,17 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkReminders = () => {
       const now = new Date();
-      // 计算提醒窗口的起始时间（现在往前推 REMINDER_WINDOW_MS）
       const windowStart = subMilliseconds(now, REMINDER_WINDOW_MS);
 
       todosRef.current.forEach((todo) => {
         if (todo.reminder && !todo.completed) {
           const reminderTime = parseISO(todo.reminder);
-          // 检查提醒时间是否在当前时间之前，但在窗口期内（24小时内）
           if (isBefore(reminderTime, now) && isAfter(reminderTime, windowStart)) {
             if ('Notification' in window && Notification.permission === 'granted') {
               new Notification(`${APP_NAME} Reminder`, {
                 body: todo.title,
                 icon: APP_ICON,
               });
-              // 清除已触发的提醒，防止重复通知
               setTodos((prev) =>
                 prev.map((t) => (t.id === todo.id ? { ...t, reminder: undefined } : t))
               );
@@ -77,6 +80,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [setTodos]);
 
+  // Actions - 使用 useCallback 缓存，且依赖 setTodos（稳定）
   const addTodo = useCallback((todo: Omit<Todo, 'id' | 'createdAt'>) => {
     const newTodo: Todo = {
       ...todo,
@@ -215,8 +219,16 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     return todos.filter((todo) => todo.priority === 'high' && isTopLevelIncomplete(todo));
   }, [todos]);
 
-  const value = useMemo(() => ({
+  // State value - 只有数据变化才会触发重渲染
+  const stateValue = useMemo(() => ({
     todos,
+    overdueTodos,
+    noDateTodos,
+    highPriorityTodos,
+  }), [todos, overdueTodos, noDateTodos, highPriorityTodos]);
+
+  // Actions value - 稳定引用，不会触发重渲染
+  const actionsValue = useMemo(() => ({
     addTodo,
     updateTodo,
     deleteTodo,
@@ -226,14 +238,30 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     getProjectTodos,
     deleteProjectTodos,
     replaceTodos,
-    overdueTodos,
-    noDateTodos,
-    highPriorityTodos,
-  }), [todos, addTodo, updateTodo, deleteTodo, toggleTodo, extendTodo, getSubtasks, getProjectTodos, deleteProjectTodos, replaceTodos, overdueTodos, noDateTodos, highPriorityTodos]);
+  }), [addTodo, updateTodo, deleteTodo, toggleTodo, extendTodo, getSubtasks, getProjectTodos, deleteProjectTodos, replaceTodos]);
 
   return (
-    <TodoContext.Provider value={value}>
-      {children}
-    </TodoContext.Provider>
+    <TodoStateContext.Provider value={stateValue}>
+      <TodoActionsContext.Provider value={actionsValue}>
+        {children}
+      </TodoActionsContext.Provider>
+    </TodoStateContext.Provider>
   );
+}
+
+// Custom hooks
+export function useTodoState() {
+  const context = useContext(TodoStateContext);
+  if (context === undefined) {
+    throw new Error('useTodoState must be used within TodoProvider');
+  }
+  return context;
+}
+
+export function useTodoActions() {
+  const context = useContext(TodoActionsContext);
+  if (context === undefined) {
+    throw new Error('useTodoActions must be used within TodoProvider');
+  }
+  return context;
 }

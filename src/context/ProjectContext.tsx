@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { createContext } from 'react';
+import { createContext, useContext } from 'react';
 import type { Project } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
@@ -12,8 +12,15 @@ const DEFAULT_PROJECT: Project = {
   order: 0,
 };
 
-interface ProjectContextType {
+// State Context - 只包含数据
+interface ProjectStateContextType {
   projects: Project[];
+}
+
+const ProjectStateContext = createContext<ProjectStateContextType | undefined>(undefined);
+
+// Actions Context - 只包含回调和查询函数
+interface ProjectActionsContextType {
   addProject: (project: Omit<Project, 'id' | 'createdAt' | 'order'>) => void;
   updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
@@ -23,7 +30,7 @@ interface ProjectContextType {
   onProjectDelete: (callback: (projectId: string) => void) => () => void;
 }
 
-export const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
+const ProjectActionsContext = createContext<ProjectActionsContextType | undefined>(undefined);
 
 interface ProjectProviderProps {
   children: ReactNode;
@@ -53,7 +60,6 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
 
   const deleteProject = useCallback((id: string) => {
     setProjects((prev) => prev.filter((project) => project.id !== id));
-    // 触发所有注册的删除回调
     deleteCallbacksRef.current.forEach((callback) => callback(id));
   }, [setProjects]);
 
@@ -72,19 +78,43 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     };
   }, []);
 
-  const value = useMemo(() => ({
+  // State value - 只有数据
+  const stateValue = useMemo(() => ({
     projects,
+  }), [projects]);
+
+  // Actions value - 稳定引用
+  const actionsValue = useMemo(() => ({
     addProject,
     updateProject,
     deleteProject,
     getSubprojects,
     replaceProjects,
     onProjectDelete,
-  }), [projects, addProject, updateProject, deleteProject, getSubprojects, replaceProjects, onProjectDelete]);
+  }), [addProject, updateProject, deleteProject, getSubprojects, replaceProjects, onProjectDelete]);
 
   return (
-    <ProjectContext.Provider value={value}>
-      {children}
-    </ProjectContext.Provider>
+    <ProjectStateContext.Provider value={stateValue}>
+      <ProjectActionsContext.Provider value={actionsValue}>
+        {children}
+      </ProjectActionsContext.Provider>
+    </ProjectStateContext.Provider>
   );
+}
+
+// Custom hooks
+export function useProjectState() {
+  const context = useContext(ProjectStateContext);
+  if (context === undefined) {
+    throw new Error('useProjectState must be used within ProjectProvider');
+  }
+  return context;
+}
+
+export function useProjectActions() {
+  const context = useContext(ProjectActionsContext);
+  if (context === undefined) {
+    throw new Error('useProjectActions must be used within ProjectProvider');
+  }
+  return context;
 }

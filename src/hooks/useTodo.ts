@@ -1,10 +1,8 @@
-import { useContext } from 'react';
-import { TodoContext } from '../context/TodoContext';
+import { useTodoState, useTodoActions } from '../context/TodoContext';
 
+// 兼容旧 API - 合并状态和操作
 export function useTodo() {
-  const context = useContext(TodoContext);
-  if (context === undefined) {
-    throw new Error('useTodo must be used within a TodoProvider');
-  }
-  return context;
+  const state = useTodoState();
+  const actions = useTodoActions();
+  return { ...state, ...actions };
 }
