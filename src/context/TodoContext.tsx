@@ -1,10 +1,12 @@
 import { useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { addDays, addWeeks, addMonths, parseISO, format, isBefore, isAfter } from 'date-fns';
+import { addDays, addWeeks, addMonths, parseISO, format, isBefore, isAfter, subMilliseconds } from 'date-fns';
 import { createContext } from 'react';
 import type { Todo } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { isTopLevelIncomplete } from '../utils/filters';
+import { APP_NAME, APP_ICON, REMINDER_CHECK_INTERVAL, REMINDER_WINDOW_MS } from '../constants';
+import { useProject } from '../hooks/useProject';
 
 interface TodoContextType {
   todos: Todo[];
@@ -27,6 +29,7 @@ export const TodoContext = createContext<TodoContextType | undefined>(undefined)
 
 export function TodoProvider({ children }: { children: ReactNode }) {
   const [todos, setTodos] = useLocalStorage<Todo[]>('titi-todos', []);
+  const { onProjectDelete } = useProject();
 
   // 用于提醒检查的 ref
   const todosRef = useRef(todos);
@@ -34,19 +37,32 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     todosRef.current = todos;
   }, [todos]);
 
+  // 注册项目删除监听，当项目被删除时清理相关任务
+  useEffect(() => {
+    const unsubscribe = onProjectDelete((projectId: string) => {
+      setTodos((prev) => prev.filter((todo) => todo.projectId !== projectId));
+    });
+    return unsubscribe;
+  }, [onProjectDelete, setTodos]);
+
   // 提醒通知检查
   useEffect(() => {
     const checkReminders = () => {
       const now = new Date();
+      // 计算提醒窗口的起始时间（现在往前推 REMINDER_WINDOW_MS）
+      const windowStart = subMilliseconds(now, REMINDER_WINDOW_MS);
+
       todosRef.current.forEach((todo) => {
         if (todo.reminder && !todo.completed) {
           const reminderTime = parseISO(todo.reminder);
-          if (isBefore(reminderTime, now) && isAfter(reminderTime, addDays(now, -1))) {
+          // 检查提醒时间是否在当前时间之前，但在窗口期内（24小时内）
+          if (isBefore(reminderTime, now) && isAfter(reminderTime, windowStart)) {
             if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification('TiTi Reminder', {
+              new Notification(`${APP_NAME} Reminder`, {
                 body: todo.title,
-                icon: '/vite.svg',
+                icon: APP_ICON,
               });
+              // 清除已触发的提醒，防止重复通知
               setTodos((prev) =>
                 prev.map((t) => (t.id === todo.id ? { ...t, reminder: undefined } : t))
               );
@@ -57,7 +73,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     };
 
     checkReminders();
-    const interval = setInterval(checkReminders, 60000);
+    const interval = setInterval(checkReminders, REMINDER_CHECK_INTERVAL);
     return () => clearInterval(interval);
   }, [setTodos]);
 
