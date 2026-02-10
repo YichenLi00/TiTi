@@ -20,13 +20,27 @@ export function importData(jsonData: string): { todos?: Todo[]; projects?: Proje
     const result: { todos?: Todo[]; projects?: Project[] } = {};
 
     if (data.todos && Array.isArray(data.todos)) {
+      const validPriorities = ['low', 'medium', 'high'];
+      const validRecurrences = ['none', 'daily', 'weekly', 'monthly'];
       const validTodos = data.todos.filter((todo: unknown) => {
         if (typeof todo !== 'object' || todo === null) return false;
         const t = todo as Record<string, unknown>;
+        const hasValidPriority = !t.priority || validPriorities.includes(t.priority as string);
+        const hasValidRecurrence = !t.recurrence || validRecurrences.includes(t.recurrence as string);
         return typeof t.id === 'string' &&
                typeof t.title === 'string' &&
                typeof t.completed === 'boolean' &&
-               typeof t.projectId === 'string';
+               typeof t.projectId === 'string' &&
+               hasValidPriority &&
+               hasValidRecurrence;
+      }).map((todo: unknown) => {
+        // 确保导入的数据有默认值
+        const t = todo as Record<string, unknown>;
+        return {
+          ...t,
+          priority: (t.priority as Todo['priority']) || 'medium',
+          recurrence: (t.recurrence as Todo['recurrence']) || 'none',
+        };
       });
       if (validTodos.length > 0) {
         result.todos = validTodos as Todo[];

@@ -1,16 +1,22 @@
-import { useState } from 'react';
-import { useProject } from '../hooks/useProject';
-import { useView } from '../hooks/useView';
-import { useTodo } from '../hooks/useTodo';
-import { SettingsModal } from './SettingsModal';
-import { AddProjectModal } from './AddProjectModal';
+import { useState, useCallback, memo, lazy, Suspense } from 'react';
+import { useProjectState, useProjectActions } from '../hooks/useProject';
+import { useViewState, useViewActions } from '../hooks/useView';
+import { useTodoState } from '../hooks/useTodo';
+import { MAX_PROJECT_DEPTH } from '../constants';
 import type { Project } from '../types';
 import './Sidebar.css';
 
-export function Sidebar() {
-  const { projects, getSubprojects, deleteProject } = useProject();
-  const { viewMode, setViewMode, selectedProjectId, setSelectedProjectId, searchQuery, setSearchQuery } = useView();
-  const { overdueTodos, noDateTodos, highPriorityTodos } = useTodo();
+// 延迟加载 Modal 组件
+const SettingsModal = lazy(() => import('./SettingsModal').then(m => ({ default: m.SettingsModal })));
+const AddProjectModal = lazy(() => import('./AddProjectModal').then(m => ({ default: m.AddProjectModal })));
+
+// 使用 memo 避免不必要的重渲染
+const Sidebar = memo(function Sidebar() {
+  const { projects } = useProjectState();
+  const { deleteProject, getSubprojects } = useProjectActions();
+  const { viewMode, selectedProjectId, searchQuery } = useViewState();
+  const { setViewMode, setSelectedProjectId, setSearchQuery } = useViewActions();
+  const { overdueTodos, noDateTodos, highPriorityTodos } = useTodoState();
 
   const [addProjectParentId, setAddProjectParentId] = useState<string | undefined>(undefined);
   const [showAddProject, setShowAddProject] = useState(false);
@@ -21,12 +27,12 @@ export function Sidebar() {
   const noDateCount = noDateTodos.length;
   const highPriorityCount = highPriorityTodos.length;
 
-  const handleProjectClick = (project: Project) => {
+  const handleProjectClick = useCallback((project: Project) => {
     setSelectedProjectId(project.id);
     setViewMode('project');
-  };
+  }, [setSelectedProjectId, setViewMode]);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
     if (query.trim()) {
@@ -34,16 +40,17 @@ export function Sidebar() {
     } else if (viewMode === 'search') {
       setViewMode('today');
     }
-  };
+  }, [setSearchQuery, setViewMode, viewMode]);
 
-  const openAddProject = (parentId?: string) => {
+  const openAddProject = useCallback((parentId?: string) => {
     setAddProjectParentId(parentId);
     setShowAddProject(true);
-  };
+  }, []);
 
-  const renderProject = (project: Project, level: number = 0) => {
+  const renderProject = useCallback((project: Project, level: number = 0): React.ReactElement => {
     const subprojects = getSubprojects(project.id);
     const isSelected = selectedProjectId === project.id && viewMode === 'project';
+    const canAddSubproject = level < MAX_PROJECT_DEPTH - 1;
 
     return (
       <div key={project.id}>
@@ -56,16 +63,18 @@ export function Sidebar() {
           <span className="project-name">{project.name}</span>
           {project.id !== 'inbox' && (
             <div className="project-actions">
-              <button
-                className="action-btn add-sub"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openAddProject(project.id);
-                }}
-                title="Add subproject"
-              >
-                +
-              </button>
+              {canAddSubproject && (
+                <button
+                  className="action-btn add-sub"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openAddProject(project.id);
+                  }}
+                  title="Add subproject"
+                >
+                  +
+                </button>
+              )}
               <button
                 className="action-btn delete"
                 onClick={(e) => {
@@ -79,10 +88,10 @@ export function Sidebar() {
             </div>
           )}
         </div>
-        {subprojects.map((sub) => renderProject(sub, level + 1))}
+        {canAddSubproject && subprojects.map((sub: Project) => renderProject(sub, level + 1))}
       </div>
     );
-  };
+  }, [getSubprojects, selectedProjectId, viewMode, deleteProject, openAddProject, handleProjectClick]);
 
   return (
     <aside className="sidebar">
@@ -202,16 +211,22 @@ export function Sidebar() {
         </div>
       </nav>
 
-      {showSettings && (
-        <SettingsModal onClose={() => setShowSettings(false)} />
-      )}
+      <Suspense fallback={null}>
+        {showSettings && (
+          <SettingsModal onClose={() => setShowSettings(false)} />
+        )}
+      </Suspense>
 
-      {showAddProject && (
-        <AddProjectModal
-          parentProjectId={addProjectParentId}
-          onClose={() => setShowAddProject(false)}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showAddProject && (
+          <AddProjectModal
+            parentProjectId={addProjectParentId}
+            onClose={() => setShowAddProject(false)}
+          />
+        )}
+      </Suspense>
     </aside>
   );
-}
+});
+
+export { Sidebar };

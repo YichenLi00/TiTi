@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useTodo } from '../hooks/useTodo';
 import { useProject } from '../hooks/useProject';
@@ -22,6 +22,13 @@ export function AddTodoForm({ defaultProjectId, viewMode }: AddTodoFormProps) {
   const [projectId, setProjectId] = useState(defaultProjectId || 'inbox');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [recurrence, setRecurrence] = useState<RecurrenceType>('none');
+
+  // 当 defaultProjectId 变化时更新 projectId
+  useEffect(() => {
+    if (defaultProjectId) {
+      setProjectId(defaultProjectId);
+    }
+  }, [defaultProjectId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,10 +1,10 @@
-import { useContext } from 'react';
-import { ViewContext } from '../context/ViewContext';
+import { useViewState, useViewActions } from '../context/ViewContext';
 
+export { useViewState, useViewActions };
+
+// 兼容旧 API - 合并状态和操作
 export function useView() {
-  const context = useContext(ViewContext);
-  if (context === undefined) {
-    throw new Error('useView must be used within a ViewProvider');
-  }
-  return context;
+  const state = useViewState();
+  const actions = useViewActions();
+  return { ...state, ...actions };
 }

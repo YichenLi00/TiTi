@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { createContext, useContext } from 'react';
+import { createContext } from 'react';
 import type { Project } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
@@ -19,6 +19,9 @@ interface ProjectStateContextType {
 
 const ProjectStateContext = createContext<ProjectStateContextType | undefined>(undefined);
 
+// Export for hooks
+export { ProjectStateContext };
+
 // Actions Context - 只包含回调和查询函数
 interface ProjectActionsContextType {
   addProject: (project: Omit<Project, 'id' | 'createdAt' | 'order'>) => void;
@@ -30,7 +33,7 @@ interface ProjectActionsContextType {
   onProjectDelete: (callback: (projectId: string) => void) => () => void;
 }
 
-const ProjectActionsContext = createContext<ProjectActionsContextType | undefined>(undefined);
+export const ProjectActionsContext = createContext<ProjectActionsContextType | undefined>(undefined);
 
 interface ProjectProviderProps {
   children: ReactNode;
@@ -102,19 +105,5 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   );
 }
 
-// Custom hooks
-export function useProjectState() {
-  const context = useContext(ProjectStateContext);
-  if (context === undefined) {
-    throw new Error('useProjectState must be used within ProjectProvider');
-  }
-  return context;
-}
-
-export function useProjectActions() {
-  const context = useContext(ProjectActionsContext);
-  if (context === undefined) {
-    throw new Error('useProjectActions must be used within ProjectProvider');
-  }
-  return context;
-}
+// Custom hooks - 放在单独文件以避免 Fast Refresh 问题
+// 这些 hook 在 useProject.ts 中重新导出

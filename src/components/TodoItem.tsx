@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import type { Todo } from '../types';
-import { useTodo } from '../hooks/useTodo';
-import { useProject } from '../hooks/useProject';
+import { useTodoActions } from '../hooks/useTodo';
+import { useProjectState } from '../hooks/useProject';
 import { PRIORITY_COLORS } from '../constants';
 import './TodoItem.css';
 
@@ -11,11 +11,17 @@ interface TodoItemProps {
   level?: number;
 }
 
-export function TodoItem({ todo, level = 0 }: TodoItemProps) {
-  const { toggleTodo, deleteTodo, updateTodo, addTodo, extendTodo, getSubtasks } = useTodo();
-  const { projects } = useProject();
+// 使用 memo 避免不必要的重渲染
+const TodoItem = memo(function TodoItem({ todo, level = 0 }: TodoItemProps) {
+  const { toggleTodo, deleteTodo, updateTodo, addTodo, extendTodo, getSubtasks } = useTodoActions();
+  const { projects } = useProjectState();
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
+
+  // 当 todo.title 变化时同步 editTitle
+  useEffect(() => {
+    setEditTitle(todo.title);
+  }, [todo.title]);
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [subtaskTitle, setSubtaskTitle] = useState('');
   const [isExpanded, setIsExpanded] = useState(true);
@@ -254,4 +260,6 @@ export function TodoItem({ todo, level = 0 }: TodoItemProps) {
       )}
     </div>
   );
-}
+});
+
+export { TodoItem };

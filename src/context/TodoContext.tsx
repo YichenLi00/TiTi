@@ -1,12 +1,12 @@
-import { useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
+import { useEffect, useCallback, useRef, useMemo, useContext, type ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { addDays, addWeeks, addMonths, parseISO, format, isBefore, isAfter, subMilliseconds } from 'date-fns';
-import { createContext, useContext } from 'react';
+import { createContext } from 'react';
 import type { Todo } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { isTopLevelIncomplete } from '../utils/filters';
 import { APP_NAME, APP_ICON, REMINDER_CHECK_INTERVAL, REMINDER_WINDOW_MS } from '../constants';
-import { useProjectActions } from './ProjectContext';
+import { ProjectActionsContext } from './ProjectContext';
 
 // State Context - 只包含数据，不包含回调
 interface TodoStateContextType {
@@ -31,11 +31,15 @@ interface TodoActionsContextType {
   replaceTodos: (todos: Todo[]) => void;
 }
 
-const TodoActionsContext = createContext<TodoActionsContextType | undefined>(undefined);
+export const TodoActionsContext = createContext<TodoActionsContextType | undefined>(undefined);
+
+// Export state context for hooks
+export { TodoStateContext };
 
 export function TodoProvider({ children }: { children: ReactNode }) {
   const [todos, setTodos] = useLocalStorage<Todo[]>('titi-todos', []);
-  const { onProjectDelete } = useProjectActions();
+  const projectActions = useContext(ProjectActionsContext);
+  const onProjectDelete = projectActions?.onProjectDelete;
 
   // 用于提醒检查的 ref
   const todosRef = useRef(todos);
@@ -45,6 +49,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
 
   // 注册项目删除监听，当项目被删除时清理相关任务
   useEffect(() => {
+    if (!onProjectDelete) return;
     const unsubscribe = onProjectDelete((projectId: string) => {
       setTodos((prev) => prev.filter((todo) => todo.projectId !== projectId));
     });
@@ -249,19 +254,5 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Custom hooks
-export function useTodoState() {
-  const context = useContext(TodoStateContext);
-  if (context === undefined) {
-    throw new Error('useTodoState must be used within TodoProvider');
-  }
-  return context;
-}
-
-export function useTodoActions() {
-  const context = useContext(TodoActionsContext);
-  if (context === undefined) {
-    throw new Error('useTodoActions must be used within TodoProvider');
-  }
-  return context;
-}
+// Custom hooks - 放在单独文件以避免 Fast Refresh 问题
+// 这些 hook 在 useTodo.ts 中重新导出

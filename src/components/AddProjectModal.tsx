@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useProject } from '../hooks/useProject';
+import { useState, memo } from 'react';
+import { useProjectActions } from '../hooks/useProject';
 import { PROJECT_COLORS } from '../constants';
 
 interface AddProjectModalProps {
@@ -7,18 +7,29 @@ interface AddProjectModalProps {
   onClose: () => void;
 }
 
-export function AddProjectModal({ parentProjectId, onClose }: AddProjectModalProps) {
-  const { addProject } = useProject();
+const AddProjectModal = memo(function AddProjectModal({ parentProjectId, onClose }: AddProjectModalProps) {
+  const { addProject } = useProjectActions();
   const [name, setName] = useState('');
   const [selectedColor, setSelectedColor] = useState(PROJECT_COLORS[0]);
 
   const handleAdd = () => {
-    if (name.trim()) {
+    const trimmedName = name.trim();
+    if (trimmedName) {
       addProject({
-        name: name.trim(),
+        name: trimmedName,
         color: selectedColor,
         parentId: parentProjectId,
       });
+      onClose();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAdd();
+    }
+    if (e.key === 'Escape') {
       onClose();
     }
   };
@@ -33,7 +44,7 @@ export function AddProjectModal({ parentProjectId, onClose }: AddProjectModalPro
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus
-          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+          onKeyDown={handleKeyDown}
         />
         <div className="color-picker">
           {PROJECT_COLORS.map((color) => (
@@ -56,4 +67,6 @@ export function AddProjectModal({ parentProjectId, onClose }: AddProjectModalPro
       </div>
     </div>
   );
-}
+});
+
+export { AddProjectModal };

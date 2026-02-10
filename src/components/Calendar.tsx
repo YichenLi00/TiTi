@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo, useCallback } from 'react';
 import {
   format,
   startOfMonth,
@@ -13,12 +13,14 @@ import {
   isToday,
   parseISO,
 } from 'date-fns';
-import { useTodo } from '../hooks/useTodo';
+import { useTodoState, useTodoActions } from '../hooks/useTodo';
 import { TodoItem } from './TodoItem';
 import './Calendar.css';
 
-export function Calendar() {
-  const { todos, addTodo } = useTodo();
+// 使用 memo 避免不必要的重渲染
+const Calendar = memo(function Calendar() {
+  const { todos } = useTodoState();
+  const { addTodo } = useTodoActions();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [isAddingTask, setIsAddingTask] = useState(false);
@@ -31,10 +33,10 @@ export function Calendar() {
 
   const calendarDays = useMemo(() => {
     const days: Date[] = [];
-    let day = calendarStart;
-    while (day <= calendarEnd) {
-      days.push(day);
-      day = addDays(day, 1);
+    let currentDay = calendarStart;
+    while (currentDay <= calendarEnd) {
+      days.push(new Date(currentDay));
+      currentDay = addDays(currentDay, 1);
     }
     return days;
   }, [calendarStart, calendarEnd]);
@@ -54,7 +56,7 @@ export function Calendar() {
     });
   }, [todos, selectedDate]);
 
-  const handleAddTask = () => {
+  const handleAddTask = useCallback(() => {
     if (newTaskTitle.trim() && selectedDate) {
       addTodo({
         title: newTaskTitle.trim(),
@@ -67,7 +69,7 @@ export function Calendar() {
       setNewTaskTitle('');
       setIsAddingTask(false);
     }
-  };
+  }, [newTaskTitle, selectedDate, addTodo]);
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -187,4 +189,6 @@ export function Calendar() {
       </div>
     </div>
   );
-}
+});
+
+export { Calendar };

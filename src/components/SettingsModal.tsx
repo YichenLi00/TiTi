@@ -1,15 +1,17 @@
-import { useRef } from 'react';
-import { useTodo } from '../hooks/useTodo';
-import { useProject } from '../hooks/useProject';
+import { useRef, memo } from 'react';
+import { useTodoState, useTodoActions } from '../hooks/useTodo';
+import { useProjectState, useProjectActions } from '../hooks/useProject';
 import { exportData, importData } from '../utils/data';
 
 interface SettingsModalProps {
   onClose: () => void;
 }
 
-export function SettingsModal({ onClose }: SettingsModalProps) {
-  const { todos, replaceTodos } = useTodo();
-  const { projects, replaceProjects } = useProject();
+const SettingsModal = memo(function SettingsModal({ onClose }: SettingsModalProps) {
+  const { todos } = useTodoState();
+  const { replaceTodos } = useTodoActions();
+  const { projects } = useProjectState();
+  const { replaceProjects } = useProjectActions();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
@@ -34,13 +36,24 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         if (result) {
           if (result.todos) replaceTodos(result.todos);
           if (result.projects) replaceProjects(result.projects);
-          alert('Data imported successfully!');
+          // eslint-disable-next-line no-console
+          console.log('Data imported successfully!');
         } else {
-          alert('Failed to import data. Please check the file format.');
+          // eslint-disable-next-line no-console
+          console.error('Failed to import data. Please check the file format.');
         }
         onClose();
       };
+      reader.onerror = () => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to read file');
+        onClose();
+      };
       reader.readAsText(file);
+    }
+    // 重置文件输入，允许再次导入同一文件
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -80,4 +93,6 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       </div>
     </div>
   );
-}
+});
+
+export { SettingsModal };

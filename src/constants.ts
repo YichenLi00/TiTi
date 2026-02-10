@@ -25,3 +25,4 @@ export const REMINDER_WINDOW_MS = 24 * 60 * 60 * 1000; // 提醒窗口：24小�
 
 // 任务相关限制
 export const MAX_SUBTASK_DEPTH = 10; // 最大子任务嵌套深度，防止无限递归
+export const MAX_PROJECT_DEPTH = 5; // 最大项目嵌套深度，防止无限递归

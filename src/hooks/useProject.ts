@@ -1,14 +1,25 @@
-import { useProjectState as useProjectStateFromContext, useProjectActions as useProjectActionsFromContext } from '../context/ProjectContext';
+import { useContext } from 'react';
+import { ProjectStateContext, ProjectActionsContext } from '../context/ProjectContext';
+
+export function useProjectState() {
+  const context = useContext(ProjectStateContext);
+  if (context === undefined) {
+    throw new Error('useProjectState must be used within ProjectProvider');
+  }
+  return context;
+}
+
+export function useProjectActions() {
+  const context = useContext(ProjectActionsContext);
+  if (context === undefined) {
+    throw new Error('useProjectActions must be used within ProjectProvider');
+  }
+  return context;
+}
 
 // 兼容旧 API - 合并状态和操作
 export function useProject() {
-  const state = useProjectStateFromContext();
-  const actions = useProjectActionsFromContext();
+  const state = useProjectState();
+  const actions = useProjectActions();
   return { ...state, ...actions };
 }
-
-// 如果只读数据，使用这个 hook 避免不必要的重渲染
-export { useProjectStateFromContext as useProjectState };
-
-// 如果只使用操作，使用这个 hook 获得稳定引用
-export { useProjectActionsFromContext as useProjectActions };

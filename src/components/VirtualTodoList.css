@@ -1,0 +1,13 @@
+.virtual-todo-list {
+  width: 100%;
+  flex: 1;
+}
+
+.virtual-list-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.virtual-list-row > * {
+  width: 100%;
+}
